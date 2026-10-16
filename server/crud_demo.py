@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from app import app
 from models import db, Pet
 
@@ -5,22 +7,34 @@ with app.app_context():
     db.create_all()
 
     # CREATE
-    pet = Pet(name="Buddy", species="Dog")
-    db.session.add(pet)
+    db.session.add_all([
+        Pet(name="Luna", species="Cat"),
+        Pet(name="Rocky", species="Dog"),
+        Pet(name="Coco", species="Rabbit"),
+    ])
     db.session.commit()
-    print("Created:", pet)
+    print("Created:", Pet.query.all())
 
     # READ
-    print("All pets:", Pet.query.all())
-    print("By id:", db.session.get(Pet, pet.id))
     print("Dogs:", Pet.query.filter_by(species="Dog").all())
+    print("Not adopted:", Pet.query.filter_by(adopted=False).count())
 
     # UPDATE
-    pet.name = "Max"
+    rocky = Pet.query.filter_by(name="Rocky").first()
+    rocky.adopted = True
     db.session.commit()
-    print("Updated:", db.session.get(Pet, pet.id))
+    print("Updated:", rocky)
 
     # DELETE
-    db.session.delete(pet)
+    coco = Pet.query.filter_by(name="Coco").first()
+    db.session.delete(coco)
     db.session.commit()
     print("After delete:", Pet.query.all())
+
+    # CONSTRAINT TEST: name is required
+    try:
+        db.session.add(Pet(name=None, species="Dog"))
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        print("Constraint works: name cannot be NULL")
